@@ -378,12 +378,13 @@ static int extensionParseClientCallback(SSL* ssl, unsigned ext_type,
   return 1;
 }
 
-static void freeTLSOutData(SSL* ssl, unsigned extension_value,
-                           const uint8_t* out, void* add_arg) {
-  (void)ssl;
-  (void)extension_value;
-  (void)add_arg;
-  free((uint8_t*)out);
+static void freeTLSOutData(SSL *ssl, unsigned int ext_type, unsigned int context,
+		const unsigned char *out, void *add_arg) {
+  (void) ssl;
+  (void) ext_type;
+  (void) context;
+  (void) add_arg;
+  free((uint8_t*) out);
 }
 
 /* DER formatted integers can be negative, so when encoding a positive integer
@@ -435,17 +436,28 @@ void tbSetClientVersion(int major_version, int minor_version) {
   client_minor_version = minor_version;
 }
 
+// TODO: find out if we're client or server...
+//       right now we know mod_token_binding is a server
+static int extensionAddCallback(SSL *s, unsigned int ext_type,
+		unsigned int context, const unsigned char **out, size_t *outlen,
+		X509 *x, size_t chainidx, int *al, void *add_arg) {
+
+  return extensionAddServerCallback(s, ext_type, out, outlen, al, add_arg);
+}
+
+static int extensionParseCallback(SSL *s, unsigned int ext_type,
+		unsigned int context, const unsigned char *in, size_t inlen, X509 *x,
+		size_t chainidx, int *al, void *parse_arg) {
+  return extensionParseServerCallback(s, ext_type, in, inlen, al, parse_arg);
+}
+
 bool tbEnableTLSTokenBindingNegotiation(SSL_CTX* ssl_ctx) {
-  uint8_t key_types[] = {TB_ECDSAP256, TB_RSA2048_PSS, TB_RSA2048_PKCS15};
+  uint8_t key_types[] = { TB_ECDSAP256, TB_RSA2048_PSS, TB_RSA2048_PKCS15 };
   setContextKeyTypes(ssl_ctx, key_types, sizeof(key_types));
-  if (SSL_CTX_add_server_custom_ext(
-          ssl_ctx, kTOKEN_BIND_EXTENSION_TYPE, &extensionAddServerCallback,
-          freeTLSOutData, NULL, &extensionParseServerCallback, NULL) != 1) {
-    return false;
-  }
-  if (SSL_CTX_add_client_custom_ext(
-          ssl_ctx, kTOKEN_BIND_EXTENSION_TYPE, &extensionAddClientCallback,
-          freeTLSOutData, NULL, &extensionParseClientCallback, NULL) != 1) {
+  if (SSL_CTX_add_custom_ext(ssl_ctx, kTOKEN_BIND_EXTENSION_TYPE, /* SSL_EXT_TLS1_2_AND_BELOW_ONLY */
+    SSL_EXT_CLIENT_HELLO | SSL_EXT_TLS1_2_SERVER_HELLO
+	| SSL_EXT_TLS1_3_SERVER_HELLO, &extensionAddCallback,
+	freeTLSOutData, NULL, &extensionParseCallback, NULL) != 1) {
     return false;
   }
   return true;
