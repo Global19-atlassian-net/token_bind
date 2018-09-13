@@ -441,14 +441,19 @@ void tbSetClientVersion(int major_version, int minor_version) {
 static int extensionAddCallback(SSL *s, unsigned int ext_type,
 		unsigned int context, const unsigned char **out, size_t *outlen,
 		X509 *x, size_t chainidx, int *al, void *add_arg) {
-
-  return extensionAddServerCallback(s, ext_type, out, outlen, al, add_arg);
+  (void) context;
+  (void) x;
+  (void) chainidx;
+  return (context & SSL_EXT_CLIENT_HELLO) ? extensionAddClientCallback(s, ext_type, out, outlen, al, add_arg) : extensionAddServerCallback(s, ext_type, out, outlen, al, add_arg);
 }
 
 static int extensionParseCallback(SSL *s, unsigned int ext_type,
 		unsigned int context, const unsigned char *in, size_t inlen, X509 *x,
 		size_t chainidx, int *al, void *parse_arg) {
-  return extensionParseServerCallback(s, ext_type, in, inlen, al, parse_arg);
+  (void) context;
+  (void) x;
+  (void) chainidx;
+  return (context & SSL_EXT_CLIENT_HELLO) ? extensionParseServerCallback(s, ext_type, in, inlen, al, parse_arg) : extensionParseClientCallback(s, ext_type, in, inlen, al, parse_arg);
 }
 
 bool tbEnableTLSTokenBindingNegotiation(SSL_CTX* ssl_ctx) {
