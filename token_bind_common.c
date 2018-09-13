@@ -436,8 +436,6 @@ void tbSetClientVersion(int major_version, int minor_version) {
   client_minor_version = minor_version;
 }
 
-// TODO: find out if we're client or server...
-//       right now we know mod_token_binding is a server
 static int extensionAddCallback(SSL *s, unsigned int ext_type,
 		unsigned int context, const unsigned char **out, size_t *outlen,
 		X509 *x, size_t chainidx, int *al, void *add_arg) {
